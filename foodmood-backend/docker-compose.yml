@@ -1,0 +1,54 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  ocr:
+    build: ./ocr-service
+    restart: unless-stopped
+    ports:
+      - "4100:4100"
+    environment:
+      PORT: 4100
+      CORS_ORIGIN: http://localhost:4000
+      TESSERACT_LANG: eng
+
+  ml:
+    build: ../ml-service
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "4200:4200"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: foodmood
+      INTERNAL_API_KEY: ${ML_INTERNAL_API_KEY:-local-dev-key}
+      AUTO_TRAIN_ON_START: "true"
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - ocr
+      - ml
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      CORS_ORIGIN: http://localhost:5173,http://localhost:4173
+      MONGODB_URI: mongodb://mongo:27017/foodmood
+      JWT_SECRET: ${JWT_SECRET:-change-me-please}
+      JWT_EXPIRES_IN: 7d
+      OCR_SERVICE_URL: http://ocr:4100
+      ML_SERVICE_URL: http://ml:4200
+      ML_INTERNAL_API_KEY: ${ML_INTERNAL_API_KEY:-local-dev-key}
+
+volumes:
+  mongo_data:

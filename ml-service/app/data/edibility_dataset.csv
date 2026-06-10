@@ -1,0 +1,236 @@
+name,is_food
+шампунь,0
+бритва,0
+мыло,0
+зубная паста,0
+туалетная бумага,0
+батарейки,0
+порошок,0
+молоко,1
+хлеб,1
+яйцо,1
+соль,1
+сахар,1
+курица,1
+мясо,1
+сыр,1
+вода,1
+shampoo,0
+razor,0
+soap,0
+toothpaste,0
+toilet paper,0
+battery,0
+detergent,0
+milk,1
+bread,1
+egg,1
+salt,1
+sugar,1
+chicken,1
+meat,1
+cheese,1
+water,1
+гель для душа,0
+пена для бритья,0
+подгузники,0
+стиральный порошок,0
+кондиционер для белья,0
+освежитель воздуха,0
+салфетки,0
+губка,0
+пакет,0
+отбеливатель,0
+средство для мытья посуды,0
+фольга,0
+пергамент,0
+корм для кошек,0
+корм для собак,0
+кошачий корм,0
+собачий корм,0
+дезодорант,0
+крем для рук,0
+лосьон,0
+мочалка,0
+ватные диски,0
+ватные палочки,0
+щетка,0
+лампочка,0
+клей,0
+скотч,0
+ножницы,0
+ручка,0
+карандаш,0
+тетрадь,0
+книга,0
+журнал,0
+газета,0
+зарядка,0
+провод,0
+кабель,0
+наушники,0
+чехол,0
+подарочный пакет,0
+подарочная карта,0
+shower gel,0
+shaving cream,0
+diapers,0
+washing powder,0
+fabric softener,0
+air freshener,0
+napkins,0
+sponge,0
+plastic bag,0
+bleach,0
+dishwashing liquid,0
+foil,0
+parchment paper,0
+cat food,0
+dog food,0
+deodorant,0
+hand cream,0
+lotion,0
+cotton pads,0
+cotton buds,0
+brush,0
+light bulb,0
+glue,0
+tape,0
+scissors,0
+pen,0
+pencil,0
+notebook,0
+book,0
+magazine,0
+newspaper,0
+charger,0
+wire,0
+cable,0
+headphones,0
+case,0
+gift bag,0
+gift card,0
+яблоки,1
+бананы,1
+апельсины,1
+мандарины,1
+помидоры,1
+огурцы,1
+картофель,1
+морковь,1
+капуста,1
+лук,1
+чеснок,1
+зелень,1
+петрушка,1
+укроп,1
+кинза,1
+салат,1
+макароны,1
+гречка,1
+рис,1
+овсянка,1
+мука,1
+масло подсолнечною,1
+масло сливочное,1
+сметана,1
+кефир,1
+творог,1
+йогурт,1
+колбаса,1
+сосиски,1
+рыба,1
+креветки,1
+икра,1
+печенье,1
+конфеты,1
+шоколад,1
+чай,1
+кофе,1
+сок,1
+лимонад,1
+пиво,1
+вино,1
+apples,1
+bananas,1
+oranges,1
+tangerines,1
+tomatoes,1
+cucumbers,1
+potatoes,1
+carrots,1
+cabbage,1
+onion,1
+garlic,1
+greens,1
+parsley,1
+dill,1
+cilantro,1
+lettuce,1
+pasta,1
+buckwheat,1
+rice,1
+oatmeal,1
+flour,1
+sunflower oil,1
+butter,1
+sour cream,1
+kefir,1
+cottage cheese,1
+yogurt,1
+sausage,1
+sausages,1
+fish,1
+shrimp,1
+caviar,1
+cookies,1
+candy,1
+chocolate,1
+tea,1
+coffee,1
+juice,1
+lemonade,1
+beer,1
+wine,1
+пена для ванн,0
+шампунь head & shoulders,0
+мыло dove,0
+мыло жидкое,0
+fairy,0
+fairy для посуды,0
+аос,0
+aos,0
+tide,0
+ariel,0
+persil,0
+миф,0
+пемолюкс,0
+туалетный утенок,0
+domestos,0
+bref,0
+пленка пищевая,0
+мешки для мусора,0
+trash bags,0
+cling film,0
+сникерс,1
+марникс,1
+snickers,1
+bounty,1
+lays,1
+pringles,1
+кока-кола,1
+coca-cola,1
+pepsi,1
+sprite,1
+fanta,1
+очиститель,0
+cleaner,0
+памперсы,0
+pampers,0
+huggies,0
+прокладки,0
+тампоны,0
+pads,0
+tampons,0
+презервативы,0
+condoms,0
