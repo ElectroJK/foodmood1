@@ -1,5 +1,7 @@
 import 'dotenv/config';
 
+const NODE_ENV = process.env.NODE_ENV || process.env.Node_ENV || 'development';
+
 const required = (key, fallback) => {
   const v = process.env[key] ?? fallback;
   if (v === undefined || v === '') {
@@ -10,7 +12,7 @@ const required = (key, fallback) => {
 
 export const env = {
   PORT: parseInt(process.env.PORT || '4000', 10),
-  NODE_ENV: process.env.NODE_ENV || 'development',
+  NODE_ENV,
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map((s) => s.trim())
