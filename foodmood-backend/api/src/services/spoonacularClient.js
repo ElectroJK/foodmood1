@@ -133,12 +133,50 @@ export async function findRecipesByIngredients(pantryItems, opts = {}) {
   return recipes;
 }
 
+// Negative cache: externalIds Spoonacular has no instructions for.
+// Prevents burning the daily quota by re-fetching /information on every
+// detail open for recipes that simply have no steps upstream.
+const NO_INSTRUCTIONS_CACHE = new Map(); // externalId → expiresAt
+const NO_INSTRUCTIONS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Extract step list from a Spoonacular /information response.
+// 1. Prefer analyzedInstructions (all sections flattened, not just the first).
+// 2. Fall back to the raw `instructions` field (often HTML) — strip tags and
+//    split into readable steps.
+function extractInstructionSteps(data) {
+  const analyzed = (data.analyzedInstructions || [])
+    .flatMap((section) => (section.steps || []).map((s) => String(s.step || '').trim()))
+    .filter(Boolean);
+  if (analyzed.length > 0) return analyzed;
+
+  if (!data.instructions) return [];
+  const text = String(data.instructions)
+    .replace(/<br\s*\/?>(\s*)/gi, '\n')
+    .replace(/<\/(li|p|ol|ul|div)>/gi, '\n')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&');
+  const lines = text
+    .split('\n')
+    .map((s) => s.replace(/\s+/g, ' ').replace(/^\d+[.)]\s*/, '').trim())
+    .filter(Boolean);
+  if (lines.length > 1) return lines;
+  // Single blob of text → split into sentences so the UI can number them.
+  return (lines[0] || '')
+    .split(/(?<=\.)\s+(?=[A-ZА-ЯЁ])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 // Lazy-load instructions + cookingTime + servings for a Spoonacular recipe.
 // Called from GET /api/recipes/:id when the recipe lacks instructions.
 export async function hydrateRecipeDetails(recipe) {
   if (!isSpoonacularConfigured()) return recipe;
   if (recipe.source !== 'spoonacular' || !recipe.externalId) return recipe;
   if (recipe.instructions && recipe.instructions.length > 0) return recipe;
+
+  const noInstrUntil = NO_INSTRUCTIONS_CACHE.get(recipe.externalId);
+  if (noInstrUntil && noInstrUntil > Date.now()) return recipe;
 
   const url = new URL(`${BASE}/recipes/${recipe.externalId}/information`);
   url.searchParams.set('apiKey', env.SPOONACULAR_API_KEY);
@@ -154,13 +192,15 @@ export async function hydrateRecipeDetails(recipe) {
   if (!res.ok) return recipe;
   const data = await res.json();
 
-  const steps =
-    (data.analyzedInstructions?.[0]?.steps || []).map((s) => s.step) ||
-    (data.instructions ? [data.instructions] : []);
+  const steps = extractInstructionSteps(data);
 
   recipe.cookingTime = data.readyInMinutes || recipe.cookingTime;
   recipe.servings = data.servings || recipe.servings;
-  if (steps.length > 0) recipe.instructions = steps;
+  if (steps.length > 0) {
+    recipe.instructions = steps;
+  } else {
+    NO_INSTRUCTIONS_CACHE.set(recipe.externalId, Date.now() + NO_INSTRUCTIONS_TTL_MS);
+  }
   try {
     await recipe.save();
   } catch {

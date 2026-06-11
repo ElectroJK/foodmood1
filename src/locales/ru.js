@@ -162,6 +162,8 @@ const ru = {
       ingredients: "Ингредиенты",
       missing: "Не хватает",
       instructions: "Инструкция",
+      loadingInstructions: "Загружаем инструкцию...",
+      noInstructions: "Для этого рецепта инструкция недоступна.",
       cooking: "Готовится...",
       cooked: "Я приготовил(а)!",
       close: "Закрыть",

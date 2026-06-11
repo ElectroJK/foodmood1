@@ -162,6 +162,8 @@ const kz = {
       ingredients: "Ингредиенттер",
       missing: "Жоқ",
       instructions: "Нұсқаулық",
+      loadingInstructions: "Нұсқаулық жүктелуде...",
+      noInstructions: "Бұл рецепт үшін нұсқаулық қолжетімсіз.",
       cooking: "Пісірілуде...",
       cooked: "Мен пісірдім!",
       close: "Жабу",

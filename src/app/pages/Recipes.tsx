@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFoodMood } from '../context/FoodMoodContext';
 import { api, RecipeFeedbackAction } from '../../lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -16,6 +16,12 @@ export function Recipes() {
   const { t } = useLanguage();
   const [selectedRecipe, setSelectedRecipe] = useState<(typeof recipes)[0] | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<string | null>(null);
+  const [instructionsLoading, setInstructionsLoading] = useState(false);
+  // Per-session cache: recipeId → fetched details. Avoids re-hitting the API
+  // (and Spoonacular quota) when the same recipe is opened again.
+  const recipeDetailsCache = useRef<
+    Map<string, { instructions: string[]; cookingTime?: number; servings?: number }>
+  >(new Map());
 
   const source = recommendationsInfo?.source || 'fallback';
   const meta = recommendationsInfo?.meta;
@@ -45,6 +51,60 @@ export function Recipes() {
       sendFeedback(selectedRecipe, 'view');
     }
   }, [selectedRecipe, sendFeedback]);
+
+  // Spoonacular recipes arrive in the list without instructions — the backend
+  // hydrates them lazily on GET /api/recipes/:id. Fetch once per recipe when
+  // the detail modal opens with an empty instructions list.
+  const selectedRecipeId = selectedRecipe?.id ?? null;
+  useEffect(() => {
+    if (!selectedRecipeId) return;
+    setSelectedRecipe((prev) => {
+      if (!prev || prev.id !== selectedRecipeId) return prev;
+      if (prev.instructions && prev.instructions.length > 0) return prev;
+      const cached = recipeDetailsCache.current.get(selectedRecipeId);
+      return cached ? { ...prev, ...cached } : prev;
+    });
+
+    const current = recipeDetailsCache.current.get(selectedRecipeId);
+    if (current) return; // already fetched (even if it came back empty)
+
+    const recipe = recipes.find((r) => r.id === selectedRecipeId);
+    if (!recipe || (recipe.instructions && recipe.instructions.length > 0)) return;
+
+    let cancelled = false;
+    setInstructionsLoading(true);
+    api
+      .getRecipe(selectedRecipeId)
+      .then(({ recipe: full }) => {
+        if (cancelled) return;
+        const details = {
+          instructions: full.instructions || [],
+          cookingTime: full.cookingTime,
+          servings: full.servings,
+        };
+        recipeDetailsCache.current.set(selectedRecipeId, details);
+        setSelectedRecipe((prev) =>
+          prev && prev.id === selectedRecipeId
+            ? {
+                ...prev,
+                instructions: details.instructions,
+                cookingTime: details.cookingTime ?? prev.cookingTime,
+                servings: details.servings ?? prev.servings,
+              }
+            : prev
+        );
+      })
+      .catch((err) => {
+        console.error('[Recipes] failed to load instructions:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setInstructionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRecipeId]);
 
   const handleCook = async (recipe: (typeof recipes)[0]) => {
     setCookingRecipe(recipe.id);
@@ -362,16 +422,34 @@ export function Recipes() {
 
                   <div className="mb-4">
                     <h3 className="font-semibold text-[#2D3748] mb-2">{t("pages.recipes.instructions", "Instructions")}</h3>
-                    <ol className="space-y-2">
-                      {selectedRecipe.instructions.map((instruction, index) => (
-                        <li key={index} className="flex gap-3">
-                          <span className="shrink-0 w-6 h-6 rounded-full bg-[#B2D2A4] text-[#2D3748] flex items-center justify-center text-sm font-medium">
-                            {index + 1}
-                          </span>
-                          <span className="text-[#4A5568]">{instruction}</span>
-                        </li>
-                      ))}
-                    </ol>
+                    {instructionsLoading && selectedRecipe.instructions.length === 0 ? (
+                      <div className="space-y-2 animate-pulse">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex gap-3 items-center">
+                            <span className="shrink-0 w-6 h-6 rounded-full bg-[#E2E8F0]" />
+                            <span className="h-4 rounded bg-[#E2E8F0] flex-1" />
+                          </div>
+                        ))}
+                        <p className="text-sm text-[#718096] pt-1">
+                          {t("pages.recipes.loadingInstructions", "Loading instructions...")}
+                        </p>
+                      </div>
+                    ) : selectedRecipe.instructions.length > 0 ? (
+                      <ol className="space-y-2">
+                        {selectedRecipe.instructions.map((instruction, index) => (
+                          <li key={index} className="flex gap-3">
+                            <span className="shrink-0 w-6 h-6 rounded-full bg-[#B2D2A4] text-[#2D3748] flex items-center justify-center text-sm font-medium">
+                              {index + 1}
+                            </span>
+                            <span className="text-[#4A5568]">{instruction}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="text-sm text-[#718096] bg-[#F7FAFC] rounded-lg p-3">
+                        {t("pages.recipes.noInstructions", "No instructions available for this recipe.")}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-2">

@@ -323,6 +323,19 @@ export const api = {
 
   // Recipes
   listRecipes: () => request<{ recipes: RecipeDTO[] }>('/api/recipes'),
+  /** Recipe detail — backend lazily hydrates instructions from Spoonacular here. */
+  getRecipe: (id: string) =>
+    request<{
+      recipe: {
+        id: string;
+        name: string;
+        cookingTime: number;
+        servings: number;
+        image: string;
+        ingredients: RecipeIngredientDTO[];
+        instructions: string[];
+      };
+    }>(`/api/recipes/${encodeURIComponent(id)}`),
   recommendRecipes: (limit = 12) =>
     request<RecommendRecipesResponseDTO>(`/api/recipes/recommend/me?limit=${limit}`),
   useRecipe: (id: string) =>

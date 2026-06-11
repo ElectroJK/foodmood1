@@ -162,6 +162,8 @@ const en = {
       ingredients: "Ingredients",
       missing: "Missing",
       instructions: "Instructions",
+      loadingInstructions: "Loading instructions...",
+      noInstructions: "No instructions available for this recipe.",
       cooking: "Cooking...",
       cooked: "I Cooked This!",
       close: "Close",
