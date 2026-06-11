@@ -9,7 +9,9 @@ import { preprocessReceipt } from './preprocess.js';
 import { parseReceipt } from './parser.js';
 
 const PORT = parseInt(process.env.PORT || '4100', 10);
-const TESSERACT_LANG = process.env.TESSERACT_LANG || 'eng';
+// 'eng+rus' — Tesseract распознаёт английские И русские чеки одним воркером.
+// Языковые данные загружаются один раз при первом запросе и кэшируются.
+const TESSERACT_LANG = process.env.TESSERACT_LANG || 'eng+rus';
 const CORS_ORIGIN = (process.env.CORS_ORIGIN || '*')
   .split(',')
   .map((s) => s.trim())

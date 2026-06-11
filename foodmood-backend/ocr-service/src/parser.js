@@ -110,6 +110,28 @@ const NOISE = [
   /domestos/i,
   /tide/i,
   /ariel/i,
+
+  // Russian receipt service lines (totals, payment, fiscal data).
+  // NOTE: JS \b does not work with Cyrillic, so plain substrings are used.
+  /итог/i,
+  /сумма/i,
+  /сдач/i,
+  /ндс/i,
+  /налог/i,
+  /кассир/i,
+  /касс(?:а|ов|е)/i,
+  /скидк/i,
+  /спасибо/i,
+  /наличн/i,
+  /карт(?:а|ой|ы|у)/i, // payment card; does NOT match "картофель"
+  /терминал/i,
+  /квитанц/i,
+  /фискальн/i,
+  /продавец/i,
+  /смена/i,
+  /оплат/i,
+  /магазин/i,
+  /(?:^|\s)(?:инн|ккм|ккт|офд|чек)(?:\s|$)/i,
 ];
 
 const DEFAULT_SHELF_LIFE = {
@@ -136,6 +158,131 @@ const CATEGORY_KEYWORDS = {
   Frozen: ['frozen', 'ice cream'],
   Beverages: ['juice', 'cola', 'water', 'tea', 'coffee', 'soda'],
 };
+
+// ============================================================================
+// RU → EN product translation.
+// Russian receipt items are translated to English so downstream ML filtering
+// and recipe recommendations (which match English keywords) keep working.
+// Keys are STEMS (word prefixes) so any grammatical form matches:
+// "молоко"/"молока"/"молоком" → stem "молок" → "milk".
+// Lookup is longest-prefix-first over a Map → O(word length), effectively O(1).
+// ============================================================================
+const RU_EN_PRODUCTS = new Map(Object.entries({
+  // Dairy
+  молок: 'milk', сыр: 'cheese', творог: 'cottage cheese', йогурт: 'yogurt',
+  кефир: 'kefir', сметан: 'sour cream', сливк: 'cream', ряженк: 'ryazhenka',
+  маргарин: 'margarine', масл: 'butter', яйц: 'eggs', яиц: 'eggs',
+  // Meat & fish
+  куриц: 'chicken', курин: 'chicken', цыпл: 'chicken', говядин: 'beef',
+  свинин: 'pork', фарш: 'mince', колбас: 'sausage', сосиск: 'sausages',
+  ветчин: 'ham', бекон: 'bacon', индейк: 'turkey', баранин: 'lamb',
+  рыб: 'fish', лосос: 'salmon', семг: 'salmon', тунец: 'tuna', тунц: 'tuna',
+  креветк: 'shrimp', сельд: 'herring', селедк: 'herring', скумбри: 'mackerel',
+  печень: 'liver', печенье: 'cookies',
+  // Veggies
+  помидор: 'tomato', томат: 'tomato', огурц: 'cucumber', огурец: 'cucumber',
+  картоф: 'potato', картошк: 'potato', морков: 'carrot', лук: 'onion',
+  чеснок: 'garlic', капуст: 'cabbage', перец: 'pepper', перц: 'pepper',
+  свекл: 'beet', кабач: 'zucchini', баклажан: 'eggplant', шпинат: 'spinach',
+  салат: 'lettuce', укроп: 'dill', петрушк: 'parsley', гриб: 'mushrooms',
+  зелен: 'greens', тыкв: 'pumpkin', редис: 'radish', брокколи: 'broccoli',
+  // Fruits
+  яблок: 'apple', банан: 'banana', апельсин: 'orange', мандарин: 'tangerine',
+  лимон: 'lemon', груш: 'pear', персик: 'peach', абрикос: 'apricot',
+  виноград: 'grapes', клубник: 'strawberry', черник: 'blueberry',
+  малин: 'raspberry', вишн: 'cherry', арбуз: 'watermelon', дын: 'melon',
+  киви: 'kiwi', гранат: 'pomegranate', ягод: 'berries', слив: 'plum',
+  // Bakery & grains
+  хлеб: 'bread', батон: 'baguette', булк: 'bun', булочк: 'bun', лаваш: 'lavash',
+  рис: 'rice', греч: 'buckwheat', макарон: 'pasta', спагетти: 'spaghetti',
+  лапш: 'noodles', овсян: 'oats', мук: 'flour', круп: 'grains', хлопь: 'cereal',
+  // Pantry
+  сахар: 'sugar', сол: 'salt', соус: 'sauce', уксус: 'vinegar', мед: 'honey',
+  варень: 'jam', фасол: 'beans', горох: 'peas', горош: 'peas',
+  кукуруз: 'corn', орех: 'nuts', шоколад: 'chocolate', конфет: 'candy',
+  торт: 'cake', морожен: 'ice cream', пельмен: 'dumplings',
+  заморож: 'frozen', кетчуп: 'ketchup', майонез: 'mayonnaise',
+  специ: 'spices', дрожж: 'yeast', мюсли: 'muesli', чипс: 'chips',
+  // Beverages
+  сок: 'juice', вод: 'water', водк: 'vodka', чай: 'tea', кофе: 'coffee',
+  газировк: 'soda', лимонад: 'lemonade', минералк: 'mineral water',
+}));
+
+// Two-word phrases checked BEFORE single stems ("сливочное масло" → "butter",
+// not "cream butter"). Keys: "<stemA> <stemB>".
+const RU_EN_PHRASES = new Map(Object.entries({
+  'сливочн масл': 'butter',
+  'оливков масл': 'olive oil',
+  'подсолнечн масл': 'sunflower oil',
+  'растительн масл': 'vegetable oil',
+  'курин филе': 'chicken fillet',
+  'курин грудк': 'chicken breast',
+  'сгущен молок': 'condensed milk',
+  'минеральн вод': 'mineral water',
+}));
+// Adjective stems used only inside phrases (no standalone translation).
+const RU_PHRASE_ADJ = new Map(Object.entries({
+  сливочн: 1, оливков: 1, подсолнечн: 1, растительн: 1,
+  филе: 1, грудк: 1, сгущен: 1, минеральн: 1,
+}));
+
+const CYRILLIC_RE = /[а-яё]/i;
+const MAX_STEM = 12;
+
+// Longest-prefix stem lookup. Returns { stem, en } or null.
+function ruStemLookup(token, map) {
+  for (let len = Math.min(token.length, MAX_STEM); len >= 3; len--) {
+    const key = token.slice(0, len);
+    const en = map.get(key);
+    if (en !== undefined) return { stem: key, en };
+  }
+  return null;
+}
+
+// Translate a Russian product name to English. Returns the English name,
+// or null when nothing recognizable was found (caller keeps the original).
+// Unknown Cyrillic tokens (brands like "Простоквашино") are dropped so the
+// result stays matchable; Latin tokens are kept as-is.
+export function translateRuToEn(name) {
+  if (!CYRILLIC_RE.test(name)) return null;
+  const tokens = name.toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean);
+  const out = [];
+  let translated = false;
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i].replace(/[^a-zа-я0-9]/g, '');
+    if (!tok) continue;
+    const hit = ruStemLookup(tok, RU_EN_PRODUCTS);
+    const adj = ruStemLookup(tok, RU_PHRASE_ADJ);
+    // Prefer the longer stem for phrase matching ("сливочн" over "слив")
+    const best = adj && (!hit || adj.stem.length > hit.stem.length) ? adj : hit;
+    // Try a two-word phrase first (both word orders)
+    if (best && i + 1 < tokens.length) {
+      const nextTok = tokens[i + 1].replace(/[^a-zа-я0-9]/g, '');
+      const nHit = ruStemLookup(nextTok, RU_EN_PRODUCTS);
+      const nAdj = ruStemLookup(nextTok, RU_PHRASE_ADJ);
+      const next = nAdj && (!nHit || nAdj.stem.length > nHit.stem.length) ? nAdj : nHit;
+      if (next) {
+        const phrase = RU_EN_PHRASES.get(`${best.stem} ${next.stem}`) ||
+                       RU_EN_PHRASES.get(`${next.stem} ${best.stem}`);
+        if (phrase) {
+          if (!out.includes(phrase)) out.push(phrase);
+          translated = true;
+          i++;
+          continue;
+        }
+      }
+    }
+    if (hit) {
+      if (!out.includes(hit.en)) out.push(hit.en);
+      translated = true;
+    } else if (!CYRILLIC_RE.test(tokens[i]) && /[a-z]/.test(tokens[i])) {
+      out.push(tokens[i]); // keep Latin-letter tokens; drop pure numbers/percentages
+    }
+  }
+  if (!translated) return null;
+  const result = out.join(' ').trim();
+  return result ? result.charAt(0).toUpperCase() + result.slice(1) : null;
+}
 
 function classifyCategory(name) {
   const lower = name.toLowerCase();
@@ -168,33 +315,38 @@ function isNoise(line) {
 //   - vowel ratio is implausibly low (real product names have vowels),
 //   - too many lone letters separated by spaces ("k m d x").
 function looksLikeGarbage(name) {
-  const letters = name.replace(/[^a-zA-Z]/g, '');
+  const letters = name.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '');
   if (letters.length < 3) return true;
 
   // 3+ consecutive identical letters → very rare in real words
-  if (/([a-zA-Z])\1{2,}/i.test(name)) return true;
+  if (/([a-zA-Zа-яё])\1{2,}/i.test(name)) return true;
 
-  // Very low vowel ratio
-  const vowels = letters.match(/[aeiouy]/gi)?.length || 0;
+  // Very low vowel ratio (Latin + Cyrillic vowels)
+  const vowels = letters.match(/[aeiouyаеёиоуыэюя]/gi)?.length || 0;
   if (vowels / letters.length < 0.15) return true;
 
   // Many 1- and 2-char tokens suggests OCR noise like "k m d x"
   const tokens = name.split(/\s+/).filter(Boolean);
   if (tokens.length >= 3) {
-    const tiny = tokens.filter((t) => t.replace(/[^a-zA-Z]/g, '').length <= 2).length;
+    const tiny = tokens.filter((t) => t.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '').length <= 2).length;
     if (tiny / tokens.length > 0.5) return true;
   }
 
   return false;
 }
 
+// Russian quantity/unit tokens stripped from names ("кг", "шт", "0.5л"...).
+// JS \b is ASCII-only, so Cyrillic units use explicit boundaries instead.
+const RU_UNIT_RE = /(?:^|[\s\d.,])(?:кг|гр|г|шт|мл|л|уп|пач|бут)\.?(?=[\s\d.,]|$)/gi;
+
 function cleanName(raw) {
   let s = raw.replace(TOTAL_PRICE_RE, '');
   for (const re of NAME_STRIPPERS) s = s.replace(re, ' ');
+  s = s.replace(RU_UNIT_RE, ' ');
   return s
     .replace(/\s{2,}/g, ' ')
-    .replace(/^[^a-zA-Z]+/, '')
-    .replace(/[^a-zA-Z0-9\s]+$/, '')
+    .replace(/^[^a-zA-Zа-яА-ЯёЁ]+/, '')
+    .replace(/[^a-zA-Z0-9а-яА-ЯёЁ\s]+$/, '')
     .trim();
 }
 
@@ -209,7 +361,7 @@ function structureConfidence(name, priceMatched) {
   let score = 0;
   if (priceMatched) score += 40;
   if (name.length >= 3) score += 20;
-  if (/[a-zA-Z]/.test(name)) score += 20;
+  if (/[a-zA-Zа-яА-ЯёЁ]/.test(name)) score += 20;
   if (/\s/.test(name)) score += 10;
   if (name.length < 30) score += 10;
   return score;
@@ -244,10 +396,19 @@ export async function parseReceipt(ocrResult) {
     if (!priceMatch) continue;
     const price = priceMatch[1].replace(',', '.');
 
-    const name = cleanName(line);
+    let name = cleanName(line);
     if (!name || name.length < 2) continue;
-    if (!/[a-zA-Z]/.test(name)) continue;
+    if (!/[a-zA-Zа-яА-ЯёЁ]/.test(name)) continue;
     if (looksLikeGarbage(name)) continue;
+
+    // Russian item → translate to English so ML filtering and recipe
+    // recommendations can match it. Original kept in `originalName`.
+    let originalName = null;
+    const translated = translateRuToEn(name);
+    if (translated) {
+      originalName = name;
+      name = translated;
+    }
 
     const lineConfData = lineConfidence[rawLine] || lineConfidence[line];
     const ocrConf = lineConfData ? lineConfData.sum / lineConfData.count : 75;
@@ -265,6 +426,7 @@ export async function parseReceipt(ocrResult) {
       category,
       quantity: 1,
       unit: 'pcs',
+      ...(originalName ? { originalName } : {}),
     });
   }
 

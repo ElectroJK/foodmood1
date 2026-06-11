@@ -66,8 +66,10 @@ export async function getRatesToKzt() {
 export function detectCurrency(text) {
   const t = String(text || '');
   // Order matters — check KZT first because Kazakh receipts often also include $ in totals.
-  if (/[₸]|\bKZT\b|\bтг\.?\b|тенге/i.test(t)) return 'KZT';
-  if (/[₽]|\bRUB\b|\bруб(?:ль|лей|\.|\b)/i.test(t)) return 'RUB';
+  // NOTE: JS \b is ASCII-only and does not work around Cyrillic letters,
+  // so "тг"/"руб" use explicit non-Cyrillic boundaries instead.
+  if (/[₸]|\bKZT\b|(?:^|[^а-яё])тг\.?(?=[^а-яё]|$)|тенге/im.test(t)) return 'KZT';
+  if (/[₽]|\bRUB\b|(?:^|[^а-яё])руб(?:л[а-яё]*|\.)?(?=[^а-яё]|$)/im.test(t)) return 'RUB';
   if (/[€]|\bEUR\b|\beuros?\b|\bевро\b/i.test(t)) return 'EUR';
   if (/[$]|\bUSD\b|\bUS\$|\bdollars?\b|\bдоллар/i.test(t)) return 'USD';
   return null;
