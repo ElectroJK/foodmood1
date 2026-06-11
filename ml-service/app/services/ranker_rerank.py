@@ -60,7 +60,11 @@ async def personal_rerank_match_results(
         if pref == "disliked":
             adjusted_scores.append(min(float(score) * 0.05, 0.01))
         elif pref == "liked":
-            adjusted_scores.append(min(float(score) + 0.15, 1.0))
+            # Push toward 1.0 proportionally instead of a flat +0.15 capped at
+            # 1.0 — the cap made every liked recipe collapse to the exact same
+            # score (identical "Relevance" %) and broke their ordering.
+            s = float(score)
+            adjusted_scores.append(s + (1.0 - s) * 0.3)
         else:
             adjusted_scores.append(float(score))
 

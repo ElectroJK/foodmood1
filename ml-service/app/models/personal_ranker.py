@@ -118,12 +118,24 @@ class PersonalRanker:
         """Return P(positive) for each candidate, or matcher-style fallback."""
         if not inputs:
             return []
+        # content-based score — always varies per recipe (cosine/coverage)
+        content = [0.7 * x.cosine + 0.3 * x.coverage for x in inputs]
         if not self._fitted or self._model is None:
             # graceful fallback: combine cosine and coverage like the matcher
-            return [0.7 * x.cosine + 0.3 * x.coverage for x in inputs]
+            return content
         X = np.array([x.to_vector() for x in inputs], dtype=np.float32)
         # predict_proba returns columns in sorted class order — we want P(class=1)
-        return [float(p) for p in self._model.predict_proba(X)[:, 1]]
+        proba = self._model.predict_proba(X)[:, 1]
+        # Blend the personal probability with the content score. The trained
+        # model can be degenerate for unseen recipes (training features for
+        # coverage/urgent are constant), which made it output the SAME
+        # probability for every candidate — the UI then showed an identical
+        # "Relevance" percent everywhere. Mixing in the per-recipe content
+        # signal keeps personalization while guaranteeing per-recipe variance.
+        return [
+            float(min(1.0, max(0.0, 0.6 * float(p) + 0.4 * c)))
+            for p, c in zip(proba, content)
+        ]
 
 
 ranker = PersonalRanker()

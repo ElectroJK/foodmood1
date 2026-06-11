@@ -126,7 +126,16 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
       setUserName(meRes.user.name);
       setUserStats(statsRes.stats);
       setInventory(invRes.items as FoodItem[]);
-      setRecipes(recRes.recipes as Recipe[]);
+      // Re-attach saved likes/dislikes on every load: the backend returns a
+      // `preferences` map (recipeId -> 'liked' | 'disliked'). Without this,
+      // hearts were lost after a page refresh whenever the recipe objects
+      // came back without userPreference attached.
+      const prefs = recRes.preferences || {};
+      setRecipes(
+        (recRes.recipes as Recipe[]).map((r) =>
+          prefs[r.id] ? { ...r, userPreference: prefs[r.id] } : r
+        )
+      );
       setRecommendationsInfo({
         source: recRes.source || 'fallback',
         meta: recRes.meta || { personalizationApplied: false },

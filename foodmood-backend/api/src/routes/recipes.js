@@ -62,7 +62,10 @@ async function handleRecipeFeedback(userId, recipeId, body) {
         : typeof body.matchPercentage === 'number'
           ? body.matchPercentage / 100
         : undefined);
-    sendMlFeedback({
+    // Await: on serverless (Vercel) un-awaited promises are killed as soon as
+    // the response is sent, so the ML service never received like/cook events
+    // in deploy. sendMlFeedback fails soft (never throws), so this is safe.
+    await sendMlFeedback({
       userId: userId.toString(),
       recipeId,
       action: mlAction,
@@ -288,7 +291,8 @@ router.post('/:id/use', authRequired, async (req, res) => {
   await req.user.save();
 
   // Tell the ML ranker the user actually cooked this recipe.
-  sendMlFeedback({
+  // Awaited for serverless deploys — see handleRecipeFeedback. Fails soft.
+  await sendMlFeedback({
     userId: req.userId.toString(),
     recipeId: req.params.id,
     action: 'cook',
